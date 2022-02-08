@@ -12,19 +12,22 @@ contract Voting {
     }
     Election[] public elections;
 
+    event newElection(uint electionId, uint registration_period, uint voting_period);
+
     struct Condidate {
         address payable condidate_address;
         uint[] signed_up_elections;
         uint[] votes_per_election;
     }
     Condidate[] public condidates;
-    mapping(address => Condidate) condidateDetails;
+    mapping(address => Condidate) public condidateDetails;
     
     mapping (address => uint[]) public Voter;
 
     function addElection(uint _registration_period, uint _voting_period) payable public {
         require(msg.value >= addElectionFee);
-        elections.push(Election(msg.sender, _registration_period, _voting_period, block.timestamp));
+        uint electionId = elections.push(Election(msg.sender, _registration_period, _voting_period, block.timestamp));
+        emit newElection(electionId, _registration_period, _voting_period);
     }
 
     function signUp(uint _election_index) public  {
@@ -58,7 +61,7 @@ contract Voting {
         uint[] memory _votes_per_election;
         _votes_per_election[_votes_per_election.length] = 0;
 
-        condidates.push(Condidate(payable(msg.sender) , _signed_up_elections, _votes_per_election));
+        uint condidateId = condidates.push(Condidate(payable(msg.sender) , _signed_up_elections, _votes_per_election));
 
         condidateDetails[msg.sender] = Condidate(payable(msg.sender) , _signed_up_elections, _votes_per_election);
         
@@ -67,9 +70,9 @@ contract Voting {
     function vote(uint _election_index, address _condidate_address) payable public {
         uint least = elections[_election_index].creating_time + elections[_election_index].registration_period;
         uint most = elections[_election_index].creating_time + elections[_election_index].registration_period + elections[_election_index].voting_period;
-        if (block.timestamp < least || block.timestamp > most) {
-            payable(msg.sender).transfer(msg.value);
-        }
+        //if (block.timestamp < least || block.timestamp > most) {
+        //    payable(msg.sender).transfer(msg.value);
+        //}
         require(block.timestamp >= least && block.timestamp < most);
 
         bool condidateExist = false;
@@ -119,5 +122,15 @@ contract Voting {
         }
 
         return (theWinner, mostVotes);
+    }
+
+    function getVoterVotsForElection (address _voter_address, uint _election_id) public view returns(uint) {
+        uint[] x = Voter[_voter_address];
+        return x[_election_id];
+    }
+
+    function getCondidateVotsForElection (address _condidate_address, uint _election_id) public view returns(uint) {
+        Condidate x = condidateDetails[_condidate_address];
+        return x.votes_per_election[_election_id];
     }
 }
